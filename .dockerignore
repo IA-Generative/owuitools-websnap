@@ -1,0 +1,14 @@
+.git
+.env
+__pycache__
+*.pyc
+.pytest_cache
+.mypy_cache
+tests/
+datasets/
+k8s/
+scripts/
+docs/
+*.md
+!README.md
+docker-compose*.yaml

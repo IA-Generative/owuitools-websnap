@@ -1,0 +1,57 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: browser-use
+  namespace: browser-use
+  labels:
+    app.kubernetes.io/name: browser-use
+    app.kubernetes.io/component: extraction-service
+    app.kubernetes.io/managed-by: kubectl
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: browser-use
+  policyTypes:
+    - Ingress
+    - Egress
+
+  ingress:
+    # Allow ingress only from ingress controller namespace
+    # Adjust the namespaceSelector label to match your cluster's ingress namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8000
+
+  egress:
+    # Allow DNS resolution (port 53 TCP/UDP)
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 53
+        - protocol: UDP
+          port: 53
+
+    # Allow HTTPS to external services (port 443)
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+
+    # Allow HTTP to external services (port 80) for fetching pages
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 80
+
+    # To restrict egress further, specify specific CIDR blocks:
+    # - to:
+    #     - ipBlock:
+    #         cidr: 0.0.0.0/0
+    #         except:
+    #           - 10.0.0.0/8
+    #           - 172.16.0.0/12
+    #           - 192.168.0.0/16

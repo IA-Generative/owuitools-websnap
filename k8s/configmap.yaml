@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: browser-use-config
+  namespace: browser-use
+  labels:
+    app.kubernetes.io/name: browser-use
+    app.kubernetes.io/component: extraction-service
+    app.kubernetes.io/managed-by: kubectl
+data:
+  SCW_LLM_BASE_URL: "https://api.scaleway.ai/v1"
+  FEATURES_ENABLED: "extraction"
+  HTTP_CONNECT_TIMEOUT: "10"
+  HTTP_READ_TIMEOUT: "30"
+  MAX_RESPONSE_SIZE: "52428800"
+  MAX_REDIRECTS: "5"
+  MAX_BROWSER_SESSIONS: "3"
+  MAX_CONCURRENT_IMAGE_ANALYSES: "5"
+  CACHE_MAX_ENTRIES: "100"
+  CACHE_TTL_SECONDS: "300"
+  CORS_ORIGINS: ""

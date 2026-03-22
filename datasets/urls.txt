@@ -1,0 +1,20 @@
+# Standard HTML pages
+https://example.com/
+https://fr.wikipedia.org/wiki/Intelligence_artificielle
+https://en.wikipedia.org/wiki/Web_scraping
+
+# PDF
+https://arxiv.org/pdf/1706.03762.pdf
+
+# Plain text
+https://www.rfc-editor.org/rfc/rfc9110.txt
+
+# Image-rich page
+https://en.wikipedia.org/wiki/Earth
+
+# JS-heavy SPA (may need browser fallback)
+https://react.dev/
+
+# Edge cases — these test graceful degradation:
+# Rate limiting is unpredictable, test checks error handling
+# Non-UTF-8 pages are synthetic (in fixtures)
