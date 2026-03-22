@@ -1,8 +1,8 @@
 """
 title: Browser Use - Web Extraction & Image Analysis Tool
-description: Fetch and extract structured content from web pages, detect login walls, process PDFs, and analyze uploaded images via vision LLM.
+description: Fetch and extract structured content from web pages, detect login walls, process PDFs, compare multiple websites, and analyze uploaded images via vision LLM.
 author: browser-use
-version: 0.3.1
+version: 0.4.0
 """
 
 import base64
@@ -134,6 +134,66 @@ class Tools:
             errors = result.get("errors", [])
             error_summary = "\n".join(f"- [{e['stage']}] {e['message']}" for e in errors)
             return f"# Extraction failed\n\n{error_summary}\n\nPartial content:\n\n{result.get('markdown', '')}"
+
+    async def compare_urls(
+        self,
+        urls: str,
+        __event_emitter__=None,
+    ) -> str:
+        """
+        Fetch and compare multiple web pages side by side.
+        Provide a comma-separated list of URLs to extract and compare their content.
+        Useful for comparing services, products, documentation, or any web pages.
+
+        :param urls: Comma-separated list of URLs to compare (e.g. "https://site1.com, https://site2.com, https://site3.com").
+        :return: Extracted content from all URLs, ready for comparison.
+        """
+        import asyncio
+        import httpx
+
+        url_list = [u.strip() for u in urls.split(",") if u.strip()]
+        if not url_list:
+            return "# No URLs provided\n\nPlease provide a comma-separated list of URLs."
+
+        if len(url_list) > 5:
+            url_list = url_list[:5]
+
+        results = []
+
+        async with httpx.AsyncClient(timeout=self.valves.timeout) as client:
+            for i, url in enumerate(url_list, 1):
+                if __event_emitter__:
+                    await __event_emitter__({"type": "status", "data": {"description": f"Fetching {i}/{len(url_list)}: {url}...", "done": False}})
+
+                try:
+                    response = await client.post(
+                        f"{self.valves.base_url}/extract",
+                        json={
+                            "url": url,
+                            "use_browser_fallback": self.valves.use_browser_fallback,
+                        },
+                    )
+                    response.raise_for_status()
+                    result = response.json()
+
+                    if result.get("ok"):
+                        # Truncate to avoid context overflow
+                        content = result["markdown"]
+                        if len(content) > 3000:
+                            content = content[:3000] + "\n\n*[Content truncated for comparison]*"
+                        results.append(f"## Site {i}: {url}\n\n{content}")
+                    else:
+                        errors = result.get("errors", [])
+                        err_msg = "; ".join(e["message"] for e in errors)
+                        results.append(f"## Site {i}: {url}\n\n*Extraction failed: {err_msg}*")
+                except Exception as exc:
+                    results.append(f"## Site {i}: {url}\n\n*Error: {exc}*")
+
+        if __event_emitter__:
+            await __event_emitter__({"type": "status", "data": {"description": f"Extracted {len(url_list)} sites", "done": True}})
+
+        header = f"# Comparison of {len(url_list)} websites\n\n"
+        return header + "\n\n---\n\n".join(results)
 
     async def analyze_image(
         self,
