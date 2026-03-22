@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 import time
 
@@ -233,13 +234,18 @@ async def test_openwebui_tool_registered():
     print("=" * 60)
 
     try:
-        # Generate JWT
+        # Generate JWT — requires WEBUI_SECRET_KEY env var
         import jwt
-        secret = "ad8087b577b425720c0387628914d5a3a4bd5445cb917caaa824868ef752d7008928300dd4777f0ac3527f0946f13147"
+        secret = os.environ.get("WEBUI_SECRET_KEY", "")
+        if not secret:
+            print_result("OpenWebUI check", False, "WEBUI_SECRET_KEY env var not set")
+            return 0, 1
+        user_id = os.environ.get("WEBUI_USER_ID", "68c961e0-3ecf-460b-984e-477d6e31df61")
+        user_email = os.environ.get("WEBUI_USER_EMAIL", "user1@test.local")
         token = jwt.encode(
             {
-                "id": "68c961e0-3ecf-460b-984e-477d6e31df61",
-                "email": "user1@test.local",
+                "id": user_id,
+                "email": user_email,
                 "role": "admin",
                 "exp": int(time.time()) + 3600,
                 "iat": int(time.time()),

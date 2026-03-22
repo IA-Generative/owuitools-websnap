@@ -1,0 +1,54 @@
+# Secrets & environment
+.env
+.env.local
+.env.production
+k8s/secret.yaml
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Test & CI artifacts
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+bandit-report.json
+pip-audit-report.json
+
+# Load test reports
+load-test-report.html
+load-test-results*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS — macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+
+# OS — Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Docker
+*.tar
