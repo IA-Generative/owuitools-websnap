@@ -1,0 +1,30 @@
+name: browser-skill-owui
+version: "1.0.0"
+
+services:
+  - name: browser-skill
+    port: 8086
+  - name: browser-skill-full
+    port: 8086
+
+pipelines:
+  files: []
+
+tools:
+  entries:
+    - id: browser_use
+      source_file: app/openwebui_tool.py
+      service_name: browser-skill
+      service_port: 8086
+    - id: vision_image_filter
+      source_file: app/openwebui_vision_filter.py
+      service_name: browser-skill
+      service_port: 8086
+
+model_tools: []
+
+env_vars: []
+
+k8s:
+  namespace: browser-use
+  custom_image: true
