@@ -19,3 +19,6 @@ data:
   CACHE_MAX_ENTRIES: "100"
   CACHE_TTL_SECONDS: "300"
   CORS_ORIGINS: ""
+  # Rotating proxy for outbound requests (anti-bot bypass)
+  # Format: http://user:key@host:port
+  PROXY_URL: ""
