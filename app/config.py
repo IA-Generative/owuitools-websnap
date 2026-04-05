@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     MAX_RESPONSE_SIZE: int = 52_428_800  # 50 MB
     MAX_REDIRECTS: int = 5
 
+    # Proxy (rotating proxy for anti-bot bypass)
+    PROXY_URL: str = ""  # e.g. http://proxy:3128
+
     # Concurrency
     MAX_BROWSER_SESSIONS: int = 3
     MAX_CONCURRENT_IMAGE_ANALYSES: int = 5

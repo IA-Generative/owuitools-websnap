@@ -1,10 +1,10 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: browser-use
-  namespace: browser-use
+  name: websnap
+  namespace: websnap
   labels:
-    app.kubernetes.io/name: browser-use
+    app.kubernetes.io/name: websnap
     app.kubernetes.io/component: extraction-service
     app.kubernetes.io/managed-by: kubectl
   annotations:
@@ -19,16 +19,16 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - browser-use.example.com
-      secretName: browser-use-tls  # Replace with your TLS cert secret name
+        - websnap.example.com
+      secretName: websnap-tls  # Replace with your TLS cert secret name
   rules:
-    - host: browser-use.example.com  # Replace with your domain
+    - host: websnap.example.com  # Replace with your domain
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: browser-use
+                name: websnap
                 port:
                   number: 80

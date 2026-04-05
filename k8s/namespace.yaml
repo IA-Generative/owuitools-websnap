@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: browser-use
+  name: websnap
   labels:
-    app.kubernetes.io/name: browser-use
+    app.kubernetes.io/name: websnap
     app.kubernetes.io/managed-by: kubectl

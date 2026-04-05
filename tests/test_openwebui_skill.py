@@ -1,7 +1,7 @@
 """
-Jeu de test pour le skill Browser Use déployé dans OpenWebUI.
+Jeu de test pour le skill WebSnap déployé dans OpenWebUI.
 
-Ce script teste le tool via l'API OpenWebUI et directement via l'API browser-use.
+Ce script teste le tool via l'API OpenWebUI et directement via l'API websnap.
 Usage:
     source .venv/bin/activate
     python tests/test_openwebui_skill.py
@@ -145,9 +145,9 @@ def print_result(name: str, passed: bool, detail: str = ""):
 
 
 async def test_direct_api():
-    """Test le skill directement via l'API browser-use."""
+    """Test le skill directement via l'API websnap."""
     print("\n" + "=" * 60)
-    print("  TEST DIRECT API (browser-use sur port 8086)")
+    print("  TEST DIRECT API (websnap sur port 8086)")
     print("=" * 60)
 
     passed = 0
@@ -261,7 +261,7 @@ async def test_openwebui_tool_registered():
             )
             tools = r.json()
             tool_ids = [t["id"] for t in tools]
-            found = "browser_use" in tool_ids
+            found = "websnap" in tool_ids
             print_result(
                 "Tool 'browser_use' enregistré",
                 found,
@@ -269,7 +269,7 @@ async def test_openwebui_tool_registered():
             )
 
             if found:
-                tool = next(t for t in tools if t["id"] == "browser_use")
+                tool = next(t for t in tools if t["id"] == "websnap")
                 has_meta = bool(tool.get("meta", {}).get("manifest", {}).get("title"))
                 print_result(
                     "Métadonnées du tool complètes",
@@ -288,7 +288,7 @@ async def test_openwebui_tool_registered():
 
 async def main():
     print("\n" + "🔧" * 30)
-    print("  JEU DE TEST — Browser Use Skill")
+    print("  JEU DE TEST — WebSnap Skill")
     print("🔧" * 30)
 
     total_passed = 0

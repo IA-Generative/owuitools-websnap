@@ -19,7 +19,11 @@ from app.security import check_redirect_url, check_url_ssrf
 
 logger = logging.getLogger(__name__)
 
-USER_AGENT = "BrowserUse/1.0 (+https://github.com/browser-use)"
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/131.0.0.0 Safari/537.36"
+)
 
 
 async def fetch_url(
@@ -30,13 +34,24 @@ async def fetch_url(
     """Fetch a URL with SSRF protection and streaming size enforcement."""
     validated_url = check_url_ssrf(url)
 
-    request_headers = {"User-Agent": USER_AGENT}
+    request_headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
+    }
     if headers:
         request_headers.update(headers)
 
     redirect_chain: list[str] = []
     current_url = validated_url
 
+    proxy = settings.PROXY_URL or None
     async with httpx.AsyncClient(
         timeout=httpx.Timeout(
             connect=settings.HTTP_CONNECT_TIMEOUT,
@@ -46,6 +61,7 @@ async def fetch_url(
         ),
         follow_redirects=False,
         cookies=cookies,
+        proxy=proxy,
     ) as client:
         for hop in range(settings.MAX_REDIRECTS + 1):
             response = await client.get(current_url, headers=request_headers)

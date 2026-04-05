@@ -1,14 +1,14 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: browser-use
-  namespace: browser-use
+  name: websnap
+  namespace: websnap
   labels:
-    app.kubernetes.io/name: browser-use
+    app.kubernetes.io/name: websnap
     app.kubernetes.io/component: extraction-service
     app.kubernetes.io/managed-by: kubectl
 spec:
   minAvailable: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: browser-use
+      app.kubernetes.io/name: websnap

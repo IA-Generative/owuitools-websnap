@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: browser-use-config
-  namespace: browser-use
+  name: websnap-config
+  namespace: websnap
   labels:
-    app.kubernetes.io/name: browser-use
+    app.kubernetes.io/name: websnap
     app.kubernetes.io/component: extraction-service
     app.kubernetes.io/managed-by: kubectl
 data:

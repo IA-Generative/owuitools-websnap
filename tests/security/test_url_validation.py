@@ -8,9 +8,19 @@ from app.security import validate_url
 class TestURLValidation:
     """Test various malformed and edge-case URLs."""
 
-    def test_missing_scheme(self):
+    def test_missing_scheme_auto_prefixed(self):
+        """Bare domain with a dot gets auto-prefixed with https://."""
+        result = validate_url("example.com/page")
+        assert result == "https://example.com/page"
+
+    def test_missing_scheme_www_auto_prefixed(self):
+        result = validate_url("www.lemonde.fr")
+        assert result == "https://www.lemonde.fr/"
+
+    def test_missing_scheme_no_dot_rejected(self):
+        """A bare word without a dot is not a valid domain — still rejected."""
         with pytest.raises(ValueError):
-            validate_url("example.com/page")
+            validate_url("notadomain")
 
     def test_double_slashes(self):
         # Should still be valid if scheme is present

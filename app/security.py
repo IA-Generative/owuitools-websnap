@@ -43,10 +43,15 @@ def validate_url(url: str) -> str:
     if len(url) > MAX_URL_LENGTH:
         raise ValueError(f"URL exceeds maximum length of {MAX_URL_LENGTH} characters")
 
+    # Auto-prefix https:// for bare domains (e.g. "www.lemonde.fr")
     parsed = urlparse(url)
-
-    if parsed.scheme.lower() not in _ALLOWED_SCHEMES:
-        raise ValueError(f"Scheme '{parsed.scheme}' is not allowed — only http and https")
+    if not parsed.scheme or parsed.scheme.lower() not in _ALLOWED_SCHEMES:
+        # Only auto-prefix if it looks like a domain (contains a dot, no dangerous scheme)
+        if "." in url.split("/")[0] and ":" not in url.split("/")[0]:
+            url = f"https://{url.lstrip('/')}"
+            parsed = urlparse(url)
+        elif parsed.scheme.lower() not in _ALLOWED_SCHEMES:
+            raise ValueError(f"Scheme '{parsed.scheme}' is not allowed — only http and https")
 
     if not parsed.hostname:
         raise ValueError("URL has no hostname")

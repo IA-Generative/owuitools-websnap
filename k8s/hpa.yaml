@@ -1,17 +1,17 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: browser-use
-  namespace: browser-use
+  name: websnap
+  namespace: websnap
   labels:
-    app.kubernetes.io/name: browser-use
+    app.kubernetes.io/name: websnap
     app.kubernetes.io/component: extraction-service
     app.kubernetes.io/managed-by: kubectl
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: browser-use
+    name: websnap
   minReplicas: 2
   maxReplicas: 10
   metrics:

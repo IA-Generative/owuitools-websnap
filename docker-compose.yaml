@@ -1,17 +1,19 @@
-# browser-skill-owui — Feature service
+# websnap — Feature service
 #
 # Mode modulaire (socle lancé séparément) :
 #   docker compose up -d
 
 services:
-  browser-use:
+  websnap:
     build:
       context: .
-      dockerfile: docker/Dockerfile
+      dockerfile: docker/Dockerfile.browser
     ports:
-      - "8000:8000"
+      - "8086:8000"
     env_file:
       - .env
+    environment:
+      PROXY_URL: ${PROXY_URL:-}
     restart: unless-stopped
     networks:
       - owui-net

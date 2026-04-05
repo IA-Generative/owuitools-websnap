@@ -22,6 +22,7 @@ async def browse_and_extract(
     cookies: dict[str, str] | None = None,
     headers: dict[str, str] | None = None,
     use_browser_fallback: bool = False,
+    force_browser: bool = False,
 ) -> ExtractionResult:
     """Orchestrate the full extraction pipeline. Return structured result."""
     errors: list[ExtractionError] = []
@@ -131,9 +132,13 @@ async def browse_and_extract(
                 ))
 
     # Step 8: Browser fallback
-    if use_browser_fallback and (
-        not parsed or not parsed.content or len(parsed.content) < 100
-    ):
+    # Trigger on: explicit flag + thin content, OR auth wall / 403 / 401, OR force_browser
+    _thin_content = not parsed or not parsed.content or len(parsed.content) < 100
+    _auth_blocked = (
+        metadata.get("auth_wall")
+        or fetch_result.status_code in (401, 403)
+    )
+    if (use_browser_fallback and _thin_content) or _auth_blocked or force_browser:
         try:
             from app.browser_fallback import fetch_with_browser
 
@@ -158,6 +163,38 @@ async def browse_and_extract(
             errors.append(ExtractionError(
                 stage=ExtractionStage.BROWSER,
                 message=f"Browser fallback failed: {exc}",
+                recoverable=True,
+            ))
+
+    # Step 8b: RSS fallback — if still thin after browser fallback
+    _still_thin = not parsed or not parsed.content or len(parsed.content) < 100
+    if _still_thin and _auth_blocked:
+        try:
+            from app.rss_fallback import discover_rss_url, fetch_and_parse_rss, rss_to_markdown
+
+            rss_url = await discover_rss_url(url, html)
+            if rss_url:
+                feed = await fetch_and_parse_rss(rss_url)
+                if feed["ok"] and feed["items"]:
+                    rss_md = rss_to_markdown(feed, url)
+                    extraction_method = "rss-fallback"
+                    metadata["rss_url"] = rss_url
+                    metadata["rss_items"] = len(feed["items"])
+                    logger.info("RSS fallback succeeded for %s (%d items)", url, len(feed["items"]))
+
+                    result = ExtractionResult(
+                        ok=True,
+                        markdown=rss_md,
+                        metadata=metadata,
+                        errors=errors,
+                    )
+                    await extraction_cache.set(cache_key, result)
+                    return result
+        except Exception as exc:
+            logger.warning("RSS fallback failed for %s: %s", url, exc)
+            errors.append(ExtractionError(
+                stage=ExtractionStage.BROWSER,
+                message=f"RSS fallback failed: {exc}",
                 recoverable=True,
             ))
 

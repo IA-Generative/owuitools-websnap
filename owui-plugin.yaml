@@ -1,10 +1,10 @@
-name: browser-skill-owui
+name: websnap
 version: "1.0.0"
 
 services:
-  - name: browser-skill
+  - name: websnap
     port: 8086
-  - name: browser-skill-full
+  - name: websnap-full
     port: 8086
 
 pipelines:
@@ -12,13 +12,17 @@ pipelines:
 
 tools:
   entries:
-    - id: browser_use
+    - id: websnap
       source_file: app/openwebui_tool.py
-      service_name: browser-skill
+      service_name: websnap
       service_port: 8086
+      methods:
+        - websnap
+        - screenshot
+        - compare_urls
     - id: vision_image_filter
       source_file: app/openwebui_vision_filter.py
-      service_name: browser-skill
+      service_name: websnap
       service_port: 8086
 
 model_tools: []
@@ -26,5 +30,5 @@ model_tools: []
 env_vars: []
 
 k8s:
-  namespace: browser-use
+  namespace: websnap
   custom_image: true

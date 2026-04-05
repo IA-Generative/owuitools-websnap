@@ -87,6 +87,64 @@ JS_HEAVY_HTML = """<!DOCTYPE html>
 
 NON_UTF8_CONTENT = "Contenu en français avec des accents: é, è, ê, ë, à, ç, ù".encode("iso-8859-1")
 
+COOKIE_BANNER_HTML = """<!DOCTYPE html>
+<html lang="fr">
+<head><title>Page avec bandeau cookies</title>
+<meta name="description" content="Page de test avec cookie consent">
+</head>
+<body>
+<h1>Contenu principal</h1>
+<p>Ceci est le contenu reel de la page, visible une fois le bandeau ferme.</p>
+<p>Deuxieme paragraphe avec des informations utiles pour le test.</p>
+
+<!-- TarteAuCitron-style cookie banner -->
+<div id="tarteaucitronRoot" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:10000;background:rgba(0,0,0,0.5)">
+  <div id="tarteaucitronAlertBig">
+    <span>Ce site utilise des cookies</span>
+    <button id="tarteaucitronPersonalize2">Tout refuser</button>
+    <button id="tarteaucitronAllDenied2">Tout accepter</button>
+  </div>
+</div>
+</body>
+</html>"""
+
+DIDOMI_BANNER_HTML = """<!DOCTYPE html>
+<html lang="fr">
+<head><title>Page avec Didomi</title></head>
+<body>
+<h1>Article principal</h1>
+<p>Texte de l'article qui devrait etre visible apres fermeture du bandeau.</p>
+
+<!-- Didomi-style consent -->
+<div id="didomi-popup" role="dialog" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:rgba(0,0,0,0.7)">
+  <button class="didomi-components-button--first">Accepter et fermer</button>
+  <button id="didomi-notice-disagree-button">Refuser</button>
+</div>
+
+<style>body { overflow: hidden; }</style>
+</body>
+</html>"""
+
+GENERIC_POPUP_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head><title>Page with generic popup</title></head>
+<body>
+<h1>Main content</h1>
+<p>This is the real page content below the overlay.</p>
+
+<!-- Generic overlay with text-based button -->
+<div id="cookie-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:50000;background:rgba(0,0,0,0.8)">
+  <div role="dialog">
+    <p>We use cookies to improve your experience</p>
+    <button aria-label="Accept cookies">Accept all</button>
+  </div>
+</div>
+
+<style>body.no-scroll { overflow: hidden; } </style>
+<script>document.body.classList.add('no-scroll');</script>
+</body>
+</html>"""
+
 
 @pytest.fixture(scope="session")
 def synthetic_server(httpserver: HTTPServer):
@@ -135,6 +193,17 @@ def synthetic_server(httpserver: HTTPServer):
         "<html><body>Too Many Requests</body></html>",
         status=429,
         content_type="text/html",
+    )
+
+    # Cookie banner pages
+    httpserver.expect_request("/cookie-tarteaucitron").respond_with_data(
+        COOKIE_BANNER_HTML, content_type="text/html; charset=utf-8"
+    )
+    httpserver.expect_request("/cookie-didomi").respond_with_data(
+        DIDOMI_BANNER_HTML, content_type="text/html; charset=utf-8"
+    )
+    httpserver.expect_request("/cookie-generic").respond_with_data(
+        GENERIC_POPUP_HTML, content_type="text/html; charset=utf-8"
     )
 
     # Test PDF (generated inline with pymupdf)

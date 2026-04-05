@@ -52,15 +52,7 @@ def create_app() -> FastAPI:
         missing = settings.validate_features()
         if missing:
             logger.error("Missing required config for enabled features: %s", missing)
-        features = settings.enabled_features
-        logger.info("Browser Use starting — enabled features: %s", features)
-        logger.info(
-            "Config: connect_timeout=%ds, read_timeout=%ds, max_size=%dMB, max_redirects=%d",
-            settings.HTTP_CONNECT_TIMEOUT,
-            settings.HTTP_READ_TIMEOUT,
-            settings.MAX_RESPONSE_SIZE // (1024 * 1024),
-            settings.MAX_REDIRECTS,
-        )
+        logger.info("Browser Use starting — features: %s", settings.enabled_features)
 
     return application
 

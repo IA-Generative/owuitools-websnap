@@ -1,16 +1,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: browser-use
-  namespace: browser-use
+  name: websnap
+  namespace: websnap
   labels:
-    app.kubernetes.io/name: browser-use
+    app.kubernetes.io/name: websnap
     app.kubernetes.io/component: extraction-service
     app.kubernetes.io/managed-by: kubectl
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: browser-use
+    app.kubernetes.io/name: websnap
     app.kubernetes.io/component: extraction-service-light
   ports:
     - port: 80
