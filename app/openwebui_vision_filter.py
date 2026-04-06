@@ -70,6 +70,22 @@ class Filter:
             content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
             return content if content else None
 
+    def _read_image_from_disk(self, file_id: str, filename: str) -> str | None:
+        """Read an uploaded image from OWUI storage and return as base64 data URI."""
+        from pathlib import Path
+        import mimetypes
+
+        for upload_dir in [Path("/app/backend/data/uploads"), Path("/app/backend/data/cache/files")]:
+            if not upload_dir.exists():
+                continue
+            for fpath in upload_dir.iterdir():
+                if fpath.name.startswith(file_id):
+                    data = fpath.read_bytes()
+                    mime = mimetypes.guess_type(filename)[0] or "image/jpeg"
+                    b64 = base64.b64encode(data).decode("utf-8")
+                    return f"data:{mime};base64,{b64}"
+        return None
+
     async def inlet(self, body: dict, __user__: Optional[dict] = None, __event_emitter__=None) -> dict:
         if not self.valves.enabled or not self.valves.llm_api_key:
             return body
@@ -83,21 +99,44 @@ class Filter:
             return body
 
         content = last_msg.get("content")
-        if not isinstance(content, list):
-            return body
 
-        # Extract image_url items and text from content list
+        # Source 1: multimodal content list (image_url items)
         image_urls = []
         text_parts = []
-        for item in content:
-            if not isinstance(item, dict):
+        if isinstance(content, list):
+            for item in content:
+                if not isinstance(item, dict):
+                    continue
+                if item.get("type") == "image_url":
+                    url = item.get("image_url", {}).get("url", "")
+                    if url:
+                        image_urls.append(url)
+                elif item.get("type") == "text":
+                    text_parts.append(item.get("text", ""))
+        elif isinstance(content, str):
+            text_parts.append(content)
+
+        # Source 2: uploaded image files in metadata.files (OWUI puts them here)
+        IMAGE_MIMETYPES = {"image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp", "image/tiff"}
+        metadata_files = body.get("metadata", {}).get("files") or []
+        file_infos = []
+
+        for f in metadata_files:
+            file_obj = f.get("file", {})
+            meta = file_obj.get("meta", {})
+            ct = f.get("content_type", "") or meta.get("content_type", "")
+            file_id = f.get("id", "") or file_obj.get("id", "")
+            filename = f.get("name", "") or file_obj.get("filename", "") or meta.get("name", "image")
+
+            if not file_id or ct not in IMAGE_MIMETYPES:
                 continue
-            if item.get("type") == "image_url":
-                url = item.get("image_url", {}).get("url", "")
-                if url:
-                    image_urls.append(url)
-            elif item.get("type") == "text":
-                text_parts.append(item.get("text", ""))
+
+            # Read image from disk and convert to data URI
+            data_uri = self._read_image_from_disk(file_id, filename)
+            if data_uri:
+                image_urls.append(data_uri)
+                file_infos.append({"id": file_id, "name": filename})
+                print(f"[VISION] Found uploaded image: {filename} ({file_id[:12]}...)")
 
         if not image_urls:
             return body
@@ -108,8 +147,9 @@ class Filter:
         if __event_emitter__:
             await __event_emitter__({"type": "status", "data": {"description": f"Analyzing {len(image_urls)} image(s) with vision model...", "done": False}})
 
-        # Get file IDs from metadata for preview links
-        file_infos = self._extract_file_ids(body)
+        # Get file IDs from metadata for preview links (complement what we already have)
+        if not file_infos:
+            file_infos = self._extract_file_ids(body)
 
         # Analyze each image directly via Scaleway VLM
         analyses = []
