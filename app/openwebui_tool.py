@@ -553,35 +553,36 @@ th{{background:#f5f5f5;padding:8px;text-align:left;font-size:13px;border-bottom:
 <table><tr><th>Source</th><th>Extrait</th></tr>{rows}</table>
 </body></html>"""
 
-        # 4. Build context for LLM (only sources with clean content)
-        source_texts = []
+        # 4. Build context for LLM as structured list
+        clean_sources = []
         for s in sources:
             content = s['content'].strip()
             if not content or len(content) < 30:
                 continue
-            # Final garbage check before sending to LLM
+            # Final garbage check
             control = sum(1 for c in content[:300] if ord(c) < 32 and c not in '\n\r\t')
             if control > 5:
                 continue
-            source_texts.append(
-                f"[Source {s['index']}] {s['title']}\n"
-                f"URL: {s['url']}\n"
-                f"Contenu:\n{content[:1500]}\n"
-            )
+            clean_sources.append({
+                "index": s["index"],
+                "title": s["title"],
+                "url": s["url"],
+                "content": content[:1500],
+            })
 
         context = {
             "query": query,
             "source_count": len(sources),
-            "sources_for_llm": "\n---\n".join(source_texts),
-            "source_list": [{"index": s["index"], "title": s["title"], "url": s["url"]} for s in sources],
+            "sources": clean_sources,
             "_instructions": (
-                "Tu as reçu le contenu extrait de plusieurs sources web. "
+                "Tu as reçu le contenu extrait de plusieurs sources web (champ 'sources').\n"
                 "Produis une réponse structurée :\n"
                 "1. Un **tableau synthétique** (Aspect | Détails | Sources [N]) si le sujet s'y prête\n"
                 "2. Un **résumé** en bullet points des points clés\n"
-                "3. Une section **Sources** numérotées avec titre et URL\n\n"
+                "3. Une section **Sources** numérotées avec titre et URL cliquable\n\n"
                 "Règles :\n"
                 "- Cite les sources avec [Source N] dans le texte\n"
+                "- Inclus les images markdown si elles sont pertinentes\n"
                 "- Sois factuel, ne déduis pas ce qui n'est pas dans les sources\n"
                 "- Réponds dans la MÊME LANGUE que la question\n"
                 "- Si les sources se contredisent, mentionne les deux points de vue"
