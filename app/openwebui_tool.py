@@ -12,10 +12,16 @@ from pydantic import BaseModel, Field
 
 
 def _clean_text(text: str) -> str:
-    """Strip HTML tags and decode HTML entities."""
+    """Strip HTML tags, decode entities, normalize whitespace."""
     text = re.sub(r"<[^>]+>", "", text)
     text = html_mod.unescape(text)
-    return text
+    # Replace literal \n sequences (not actual newlines)
+    text = text.replace("\\n", "\n")
+    # Collapse 3+ consecutive newlines into 2
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    # Collapse multiple spaces on same line
+    text = re.sub(r"[^\S\n]{2,}", " ", text)
+    return text.strip()
 
 
 def _normalize_url(url: str) -> str:
@@ -489,6 +495,10 @@ document.querySelector('details')?.addEventListener('toggle', ()=>{{
                                     raw = raw.split("## Main content", 1)[1]
                                 # Strip metadata lines
                                 raw = re.sub(r"^- \*?\*?(Source|Content type|Extraction method|Retrieved at|Language|Final URL)\*?\*?:.*$", "", raw, flags=re.MULTILINE)
+                                # Normalize whitespace
+                                raw = raw.replace("\\n", "\n")
+                                raw = re.sub(r"\n{3,}", "\n\n", raw)
+                                raw = re.sub(r"[^\S\n]{2,}", " ", raw)
                                 content = raw.strip()[:2000]
                     except Exception:
                         pass
