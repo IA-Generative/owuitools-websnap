@@ -11,6 +11,13 @@ import re
 from pydantic import BaseModel, Field
 
 
+def _clean_text(text: str) -> str:
+    """Strip HTML tags and decode HTML entities."""
+    text = re.sub(r"<[^>]+>", "", text)
+    text = html_mod.unescape(text)
+    return text
+
+
 def _normalize_url(url: str) -> str:
     """Add https:// scheme if missing. Handles 'www.example.com' and bare domains."""
     url = url.strip()
@@ -506,12 +513,6 @@ document.querySelector('details')?.addEventListener('toggle', ()=>{{
             await __event_emitter__({"type": "status", "data": {"description": f"{len(sources)} sources extraites", "done": True}})
 
         # 3. Build HTML report
-        def _clean_text(text: str) -> str:
-            """Strip HTML tags and decode HTML entities."""
-            text = re.sub(r"<[^>]+>", "", text)
-            text = html_mod.unescape(text)  # Decode &#x27; → ' etc.
-            return text
-
         rows = ""
         for s in sources:
             title_escaped = html_mod.escape(_clean_text(s["title"]))
