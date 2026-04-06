@@ -482,8 +482,6 @@ document.querySelector('details')?.addEventListener('toggle', ()=>{{
                             # Clean up: strip websnap metadata header
                             if "## Main content" in raw:
                                 raw = raw.split("## Main content", 1)[1]
-                            # Strip image markdown links
-                            raw = re.sub(r"!\[.*?\]\(.*?\)", "", raw)
                             # Strip remaining markdown headers that are just metadata
                             raw = re.sub(r"^- \*?\*?(Source|Content type|Extraction method|Retrieved at|Language|Final URL)\*?\*?:.*$", "", raw, flags=re.MULTILINE)
                             content = raw.strip()[:2000]
