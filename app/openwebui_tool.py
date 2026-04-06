@@ -413,6 +413,143 @@ document.querySelector('details')?.addEventListener('toggle', ()=>{{
         header = f"# Comparison of {len(url_list)} websites\n\n"
         return header + "\n\n---\n\n".join(results)
 
+    async def web_research(
+        self,
+        query: str,
+        __event_emitter__=None,
+    ):
+        """
+        Recherche web approfondie : interroge plusieurs moteurs de recherche, extrait le contenu
+        des pages les plus pertinentes, et retourne un rapport structuré avec sources.
+        Utiliser pour des questions d'actualité, de géopolitique, de faits récents, etc.
+
+        :param query: La question ou le sujet de recherche en langage naturel.
+        :return: Rapport structuré avec sources dans un iframe + contexte pour synthèse LLM.
+        """
+        import httpx
+        from fastapi.responses import HTMLResponse
+
+        if __event_emitter__:
+            await __event_emitter__({"type": "status", "data": {"description": f"Recherche : {query[:50]}...", "done": False}})
+
+        sources = []
+        async with httpx.AsyncClient(timeout=self.valves.timeout) as client:
+            # 1. Search via SearXNG
+            try:
+                resp = await client.get(
+                    "http://searxng:8080/search",
+                    params={"q": query, "format": "json", "language": "fr"},
+                )
+                resp.raise_for_status()
+                search_results = resp.json().get("results", [])[:8]
+            except Exception as e:
+                return f"# Erreur de recherche\n\n{e}"
+
+            if __event_emitter__:
+                await __event_emitter__({"type": "status", "data": {"description": f"{len(search_results)} résultats trouvés, extraction...", "done": False}})
+
+            # 2. Extract content from top results via websnap
+            for i, sr in enumerate(search_results):
+                url = sr.get("url", "")
+                title = sr.get("title", "")
+                snippet = sr.get("content", "")
+
+                if not url:
+                    continue
+
+                if __event_emitter__:
+                    await __event_emitter__({"type": "status", "data": {"description": f"Extraction {i+1}/{len(search_results)} : {title[:40]}...", "done": False}})
+
+                # Extract content
+                content = ""
+                try:
+                    extract_resp = await client.post(
+                        f"{self.valves.base_url}/extract",
+                        json={"url": url},
+                        timeout=15,
+                    )
+                    if extract_resp.status_code == 200:
+                        data = extract_resp.json()
+                        if data.get("ok"):
+                            content = data.get("markdown", "")[:2000]  # Limit per source
+                except Exception:
+                    content = snippet  # Fallback to search snippet
+
+                sources.append({
+                    "index": len(sources) + 1,
+                    "title": title,
+                    "url": url,
+                    "snippet": snippet[:200],
+                    "content": content or snippet,
+                    "engine": ", ".join(sr.get("engines", [])),
+                })
+
+        if not sources:
+            return f"# Aucun résultat\n\nAucune source trouvée pour « {query} »."
+
+        if __event_emitter__:
+            await __event_emitter__({"type": "status", "data": {"description": f"{len(sources)} sources extraites", "done": True}})
+
+        # 3. Build HTML report
+        rows = ""
+        for s in sources:
+            title_escaped = html_mod.escape(s["title"])
+            url_escaped = html_mod.escape(s["url"])
+            snippet_escaped = html_mod.escape(s["snippet"])
+            engine_escaped = html_mod.escape(s["engine"])
+            rows += f"""<tr>
+                <td style="padding:8px;border-bottom:1px solid #eee;font-weight:600;font-size:13px">
+                    [{s['index']}] <a href="{url_escaped}" target="_blank" style="color:#1565c0;text-decoration:none">{title_escaped}</a>
+                    <br><span style="color:#888;font-size:11px">{engine_escaped}</span>
+                </td>
+                <td style="padding:8px;border-bottom:1px solid #eee;font-size:12px;color:#444">{snippet_escaped}</td>
+            </tr>"""
+
+        html_content = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+html,body{{font-family:-apple-system,sans-serif;margin:0;padding:12px;background:#fafafa;min-height:100vh}}
+h3{{margin:0 0 8px;color:#333;font-size:15px}}
+.info{{color:#666;font-size:12px;margin-bottom:8px}}
+table{{width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1)}}
+th{{background:#f5f5f5;padding:8px;text-align:left;font-size:13px;border-bottom:2px solid #ddd}}
+</style></head><body>
+<h3>🔍 Recherche : {html_mod.escape(query)}</h3>
+<div class="info">{len(sources)} sources extraites</div>
+<table><tr><th>Source</th><th>Extrait</th></tr>{rows}</table>
+</body></html>"""
+
+        # 4. Build context for LLM
+        source_texts = []
+        for s in sources:
+            source_texts.append(
+                f"[Source {s['index']}] {s['title']}\n"
+                f"URL: {s['url']}\n"
+                f"Contenu:\n{s['content'][:1500]}\n"
+            )
+
+        context = {
+            "query": query,
+            "source_count": len(sources),
+            "sources_for_llm": "\n---\n".join(source_texts),
+            "source_list": [{"index": s["index"], "title": s["title"], "url": s["url"]} for s in sources],
+            "_instructions": (
+                "Tu as reçu le contenu extrait de plusieurs sources web. "
+                "Produis une réponse structurée :\n"
+                "1. Un **tableau synthétique** (Aspect | Détails | Sources [N]) si le sujet s'y prête\n"
+                "2. Un **résumé** en bullet points des points clés\n"
+                "3. Une section **Sources** numérotées avec titre et URL\n\n"
+                "Règles :\n"
+                "- Cite les sources avec [Source N] dans le texte\n"
+                "- Sois factuel, ne déduis pas ce qui n'est pas dans les sources\n"
+                "- Réponds dans la MÊME LANGUE que la question\n"
+                "- Si les sources se contredisent, mentionne les deux points de vue"
+            ),
+        }
+
+        return (
+            HTMLResponse(content=html_content, headers={"Content-Disposition": "inline"}),
+            context,
+        )
+
     async def analyze_image(
         self,
         query: str = "",
