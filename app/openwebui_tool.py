@@ -471,16 +471,31 @@ document.querySelector('details')?.addEventListener('toggle', ()=>{{
                     if extract_resp.status_code == 200:
                         data = extract_resp.json()
                         if data.get("ok"):
-                            content = data.get("markdown", "")[:2000]  # Limit per source
+                            raw = data.get("markdown", "")
+                            # Clean up: strip websnap metadata header
+                            if "## Main content" in raw:
+                                raw = raw.split("## Main content", 1)[1]
+                            # Strip image markdown links
+                            raw = re.sub(r"!\[.*?\]\(.*?\)", "", raw)
+                            # Strip remaining markdown headers that are just metadata
+                            raw = re.sub(r"^- \*?\*?(Source|Content type|Extraction method|Retrieved at|Language|Final URL)\*?\*?:.*$", "", raw, flags=re.MULTILINE)
+                            content = raw.strip()[:2000]
                 except Exception:
-                    content = snippet  # Fallback to search snippet
+                    pass  # Will use snippet as fallback
+
+                # Skip sources with garbage/binary content
+                if content and len(content) > 50:
+                    # Check for binary garbage (high ratio of non-printable chars)
+                    printable_ratio = sum(1 for c in content[:200] if c.isprintable() or c in '\n\r\t') / max(len(content[:200]), 1)
+                    if printable_ratio < 0.7:
+                        content = ""  # Discard, use snippet
 
                 sources.append({
                     "index": len(sources) + 1,
-                    "title": title,
+                    "title": _clean_text(title),
                     "url": url,
-                    "snippet": snippet[:200],
-                    "content": content or snippet,
+                    "snippet": _clean_text(snippet[:200]),
+                    "content": content or _clean_text(snippet),
                     "engine": ", ".join(sr.get("engines", [])),
                 })
 
@@ -523,13 +538,16 @@ th{{background:#f5f5f5;padding:8px;text-align:left;font-size:13px;border-bottom:
 <table><tr><th>Source</th><th>Extrait</th></tr>{rows}</table>
 </body></html>"""
 
-        # 4. Build context for LLM
+        # 4. Build context for LLM (only sources with real content)
         source_texts = []
         for s in sources:
+            content = s['content'].strip()
+            if not content or len(content) < 30:
+                continue
             source_texts.append(
                 f"[Source {s['index']}] {s['title']}\n"
                 f"URL: {s['url']}\n"
-                f"Contenu:\n{s['content'][:1500]}\n"
+                f"Contenu:\n{content[:1500]}\n"
             )
 
         context = {
