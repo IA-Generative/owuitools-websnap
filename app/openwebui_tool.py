@@ -464,42 +464,48 @@ document.querySelector('details')?.addEventListener('toggle', ()=>{{
                 if not url:
                     continue
 
+                # Skip known non-extractable sites (video, heavy JS)
+                SKIP_DOMAINS = ("youtube.com", "youtu.be", "dailymotion.com", "vimeo.com", "tiktok.com")
+                skip_extract = any(d in url.lower() for d in SKIP_DOMAINS)
+
                 if __event_emitter__:
                     await __event_emitter__({"type": "status", "data": {"description": f"Extraction {i+1}/{len(search_results)} : {title[:40]}...", "done": False}})
 
-                # Extract content
+                # Extract content (skip for video sites)
                 content = ""
-                try:
-                    extract_resp = await client.post(
-                        f"{self.valves.base_url}/extract",
-                        json={"url": url},
-                        timeout=15,
-                    )
-                    if extract_resp.status_code == 200:
-                        data = extract_resp.json()
-                        if data.get("ok"):
-                            raw = data.get("markdown", "")
-                            # Clean up: strip websnap metadata header
-                            if "## Main content" in raw:
-                                raw = raw.split("## Main content", 1)[1]
-                            # Strip remaining markdown headers that are just metadata
-                            raw = re.sub(r"^- \*?\*?(Source|Content type|Extraction method|Retrieved at|Language|Final URL)\*?\*?:.*$", "", raw, flags=re.MULTILINE)
-                            content = raw.strip()[:2000]
-                except Exception:
-                    pass  # Will use snippet as fallback
+                if not skip_extract:
+                    try:
+                        extract_resp = await client.post(
+                            f"{self.valves.base_url}/extract",
+                            json={"url": url},
+                            timeout=15,
+                        )
+                        if extract_resp.status_code == 200:
+                            data = extract_resp.json()
+                            if data.get("ok"):
+                                raw = data.get("markdown", "")
+                                # Clean up: strip websnap metadata header
+                                if "## Main content" in raw:
+                                    raw = raw.split("## Main content", 1)[1]
+                                # Strip metadata lines
+                                raw = re.sub(r"^- \*?\*?(Source|Content type|Extraction method|Retrieved at|Language|Final URL)\*?\*?:.*$", "", raw, flags=re.MULTILINE)
+                                content = raw.strip()[:2000]
+                    except Exception:
+                        pass
 
-                # Skip sources with garbage/binary content
-                if content and len(content) > 50:
-                    # Check for binary garbage (high ratio of non-printable chars)
-                    printable_ratio = sum(1 for c in content[:200] if c.isprintable() or c in '\n\r\t') / max(len(content[:200]), 1)
-                    if printable_ratio < 0.7:
-                        content = ""  # Discard, use snippet
+                # Detect and discard garbage/binary content
+                if content:
+                    sample = content[:500]
+                    printable = sum(1 for c in sample if c.isprintable() or c in '\n\r\t')
+                    control_chars = sum(1 for c in sample if ord(c) < 32 and c not in '\n\r\t')
+                    if printable / max(len(sample), 1) < 0.8 or control_chars > 10:
+                        content = ""  # Garbage, use snippet
 
                 sources.append({
                     "index": len(sources) + 1,
                     "title": _clean_text(title),
                     "url": url,
-                    "snippet": _clean_text(snippet[:200]),
+                    "snippet": _clean_text(snippet[:300]),
                     "content": content or _clean_text(snippet),
                     "engine": ", ".join(sr.get("engines", [])),
                 })
@@ -537,11 +543,15 @@ th{{background:#f5f5f5;padding:8px;text-align:left;font-size:13px;border-bottom:
 <table><tr><th>Source</th><th>Extrait</th></tr>{rows}</table>
 </body></html>"""
 
-        # 4. Build context for LLM (only sources with real content)
+        # 4. Build context for LLM (only sources with clean content)
         source_texts = []
         for s in sources:
             content = s['content'].strip()
             if not content or len(content) < 30:
+                continue
+            # Final garbage check before sending to LLM
+            control = sum(1 for c in content[:300] if ord(c) < 32 and c not in '\n\r\t')
+            if control > 5:
                 continue
             source_texts.append(
                 f"[Source {s['index']}] {s['title']}\n"
