@@ -491,14 +491,17 @@ document.querySelector('details')?.addEventListener('toggle', ()=>{{
             await __event_emitter__({"type": "status", "data": {"description": f"{len(sources)} sources extraites", "done": True}})
 
         # 3. Build HTML report
-        def _strip_tags(text: str) -> str:
-            return re.sub(r"<[^>]+>", "", text)
+        def _clean_text(text: str) -> str:
+            """Strip HTML tags and decode HTML entities."""
+            text = re.sub(r"<[^>]+>", "", text)
+            text = html_mod.unescape(text)  # Decode &#x27; → ' etc.
+            return text
 
         rows = ""
         for s in sources:
-            title_escaped = html_mod.escape(_strip_tags(s["title"]))
+            title_escaped = html_mod.escape(_clean_text(s["title"]))
             url_escaped = html_mod.escape(s["url"])
-            snippet_escaped = html_mod.escape(_strip_tags(s["snippet"]))
+            snippet_escaped = html_mod.escape(_clean_text(s["snippet"]))
             engine_escaped = html_mod.escape(s["engine"])
             rows += f"""<tr>
                 <td style="padding:8px;border-bottom:1px solid #eee;font-weight:600;font-size:13px">
